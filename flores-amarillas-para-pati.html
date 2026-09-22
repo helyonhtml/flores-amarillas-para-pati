@@ -35,7 +35,8 @@
       radial-gradient(ellipse 70% 50% at 50% 20%, rgba(255,180,60,0.08), transparent 60%),
       radial-gradient(ellipse 90% 70% at 50% 100%, rgba(80,30,90,0.35), transparent 60%),
       #0a0512;
-    padding:6vh 20px;
+    padding:4vh 20px;
+    overflow-y:auto; -webkit-overflow-scrolling:touch;
   }
   .card-wrap{ position:relative; width:min(90vw, 400px); }
   .card{
@@ -104,7 +105,19 @@
     text-shadow:0 0 18px rgba(255,201,60,0.5);
   }
 
-  .bouquet-wrap{ position:relative; z-index:2; width:74%; max-width:236px; aspect-ratio:240/260; margin:1.2rem 0 1.5rem; animation: bunny-bob 4s ease-in-out infinite; }
+  .bouquet-wrap{ position:relative; z-index:2; width:60%; max-width:190px; aspect-ratio:240/260; margin:0.7rem 0 1.1rem; animation: bunny-bob 4s ease-in-out infinite; }
+
+  .polaroid{
+    position:relative; z-index:2; margin:0.8rem 0 0.2rem;
+    width:132px; padding:8px 8px 22px; background:#fbf6ea;
+    border-radius:4px; box-shadow:0 10px 22px rgba(0,0,0,0.45);
+    transform:rotate(-4deg);
+  }
+  .polaroid img{ width:100%; height:132px; object-fit:cover; border-radius:2px; display:block; }
+  .polaroid .pin{
+    position:absolute; top:-11px; left:50%; transform:translateX(-50%);
+    font-size:1.3rem; filter:drop-shadow(0 3px 4px rgba(0,0,0,0.5));
+  }
   @keyframes bunny-bob{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-6px);} }
   .stems-svg{ position:absolute; inset:0; width:100%; height:100%; z-index:1; filter:drop-shadow(0 8px 14px rgba(0,0,0,0.35)); }
   .flower-spot{ position:absolute; }
@@ -371,6 +384,11 @@
 
       <h1 class="headline">Flores Amarillas<span class="para-ti">para ti</span></h1>
 
+      <div class="polaroid">
+        <span class="pin">🌻</span>
+        <img src="foto-principal.jpg" alt="Nosotros" width="132" height="132">
+      </div>
+
       <div class="bouquet-wrap">
         <svg class="stems-svg" viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -430,6 +448,9 @@
   <audio id="voiceAudio" preload="none">
     <source src="mensaje-pati.mp3" type="audio/mpeg">
     <source src="mensaje-pati.m4a" type="audio/mp4">
+  </audio>
+  <audio id="bgMusic" preload="none" loop>
+    <source src="musica-fondo.mp3" type="audio/mpeg">
   </audio>
 
   <div class="title-wrap">
@@ -1071,106 +1092,38 @@ function startPetals(){
   for(var i=0;i<6;i++){ setTimeout(spawnPetal, i*280); }
 }
 
-/* ================= AMBIENT MUSIC (synthesized music-box, no external file) ================= */
-var audioCtx = null, masterGain = null, musicOn = false, musicStarted = false, musicTimer = null;
-var nextNoteTime = 0, noteIndex = 0;
-var musicBaseGain = 0.24;
-var musicDucked = false;
-var scaleFreqs = [261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25];
-var melodyPattern = [0,2,4,7,4,2,5,3, 0,2,4,7,6,4,2,0];
-var chordSets = [[130.81,164.81,196.00],[110.00,138.59,164.81],[174.61,220.00,261.63],[196.00,246.94,293.66]];
-var noteDur = 0.92;
+/* ================= AMBIENT MUSIC (your own background track, plays always) ================= */
+var bgMusic = document.getElementById('bgMusic');
+var musicOn = false, musicStarted = false, musicDucked = false;
+var bgMusicVolume = 0.55;
+bgMusic.volume = bgMusicVolume;
 
-function ensureAudio(){
-  if(audioCtx) return;
-  var AC = window.AudioContext || window.webkitAudioContext;
-  if(!AC) return;
-  audioCtx = new AC();
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = musicBaseGain;
-  var filter = audioCtx.createBiquadFilter();
-  filter.type = 'lowpass'; filter.frequency.value = 2400;
-  var delay = audioCtx.createDelay();
-  delay.delayTime.value = 0.38;
-  var feedback = audioCtx.createGain(); feedback.gain.value = 0.36;
-  var delayFilter = audioCtx.createBiquadFilter(); delayFilter.type = 'lowpass'; delayFilter.frequency.value = 1700;
-  masterGain.connect(filter);
-  filter.connect(audioCtx.destination);
-  filter.connect(delay);
-  delay.connect(delayFilter);
-  delayFilter.connect(feedback);
-  feedback.connect(delay);
-  delay.connect(audioCtx.destination);
-}
-function pluckNote(freq, time, dur, gainVal){
-  var osc = audioCtx.createOscillator();
-  osc.type = 'sine'; osc.frequency.value = freq;
-  var g = audioCtx.createGain();
-  g.gain.setValueAtTime(0.0001, time);
-  g.gain.linearRampToValueAtTime(gainVal, time+0.05);
-  g.gain.exponentialRampToValueAtTime(0.0001, time+dur);
-  osc.connect(g); g.connect(masterGain);
-  osc.start(time); osc.stop(time+dur+0.05);
-
-  var osc2 = audioCtx.createOscillator();
-  osc2.type = 'sine'; osc2.frequency.value = freq*2.0;
-  var g2 = audioCtx.createGain();
-  g2.gain.setValueAtTime(0.0001, time);
-  g2.gain.linearRampToValueAtTime(gainVal*0.16, time+0.04);
-  g2.gain.exponentialRampToValueAtTime(0.0001, time+dur*0.5);
-  osc2.connect(g2); g2.connect(masterGain);
-  osc2.start(time); osc2.stop(time+dur*0.5+0.05);
-}
-function padChord(freqs, time, dur, gainVal){
-  freqs.forEach(function(fr){
-    var osc = audioCtx.createOscillator();
-    osc.type = 'sine'; osc.frequency.value = fr;
-    var g = audioCtx.createGain();
-    g.gain.setValueAtTime(0.0001, time);
-    g.gain.linearRampToValueAtTime(gainVal, time+1.8);
-    g.gain.linearRampToValueAtTime(0.0001, time+dur);
-    osc.connect(g); g.connect(masterGain);
-    osc.start(time); osc.stop(time+dur+0.1);
-  });
-}
-function scheduler(){
-  while(nextNoteTime < audioCtx.currentTime + 0.6){
-    var idx = melodyPattern[noteIndex % melodyPattern.length];
-    pluckNote(scaleFreqs[idx], nextNoteTime, noteDur*1.6, 0.05);
-    if(noteIndex % 8 === 0){
-      padChord(chordSets[Math.floor(noteIndex/8) % chordSets.length], nextNoteTime, noteDur*8, 0.022);
-    }
-    nextNoteTime += noteDur;
-    noteIndex++;
-  }
+function playBgMusicSafely(){
+  var p = bgMusic.play();
+  if(p && p.catch){ p.catch(function(err){ console.error('No se pudo reproducir la musica de fondo:', err); }); }
 }
 function startAmbientMusic(){
-  ensureAudio();
-  if(!audioCtx) return;
-  if(audioCtx.state === 'suspended') audioCtx.resume();
   musicOn = true;
-  if(muteBtn) muteBtn.textContent = '🔊';
-  if(musicStarted) return;
   musicStarted = true;
-  nextNoteTime = audioCtx.currentTime + 0.1;
-  scheduler();
-  musicTimer = setInterval(scheduler, 200);
+  if(muteBtn) muteBtn.textContent = '🔊';
+  if(!musicDucked){ playBgMusicSafely(); }
 }
 function toggleMute(){
-  ensureAudio();
-  if(!audioCtx) return;
-  if(audioCtx.state === 'suspended') audioCtx.resume();
   musicOn = !musicOn;
-  if(!musicDucked){
-    masterGain.gain.setTargetAtTime(musicOn ? musicBaseGain : 0.0001, audioCtx.currentTime, 0.08);
+  if(musicOn){
+    if(!musicDucked){ playBgMusicSafely(); }
+  } else {
+    bgMusic.pause();
   }
   muteBtn.textContent = musicOn ? '🔊' : '🔇';
 }
 function duckMusic(active){
   musicDucked = active;
-  if(!audioCtx || !masterGain) return;
-  var target = active ? 0.0001 : (musicOn ? musicBaseGain : 0.0001);
-  masterGain.gain.setTargetAtTime(target, audioCtx.currentTime, 0.35);
+  if(active){
+    bgMusic.pause();
+  } else if(musicOn){
+    playBgMusicSafely();
+  }
 }
 var muteBtn = document.getElementById('muteBtn');
 muteBtn.addEventListener('click', function(ev){ ev.stopPropagation(); toggleMute(); });
